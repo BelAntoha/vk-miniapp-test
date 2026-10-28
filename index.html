@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка прав ВК</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --ok: #15803d; --bad: #b91c1c; --btn: #0077ff; --card: #f3f4f6; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #19191a; --fg: #e5e7eb; --muted: #9ca3af; --ok: #4ade80; --bad: #f87171; --card: #232324; } }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 20px; }
+  button { width: 100%; padding: 14px; border: 0; border-radius: 10px; background: var(--btn); color: #fff; font-size: 17px; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  #log { margin-top: 20px; padding: 0; list-style: none; }
+  #log li { background: var(--card); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; word-break: break-word; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Проверка прав ВК для автопостинга</h1>
+  <p>Нажмите кнопку и подтвердите права в окне ВК. Страница проверит, можно ли загружать фото на стену группы. Ключ никуда не отправляется.</p>
+  <button id="go">Проверить права</button>
+  <ul id="log"></ul>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@vkontakte/vk-bridge@2.15.4/dist/browser.min.js"></script>
+<script>
+  const APP_ID = 54861164, GROUP_ID = 226266483, V = "5.199";
+  const log = (text, cls) => { const li = document.createElement("li"); li.textContent = text; if (cls) li.className = cls; document.getElementById("log").appendChild(li); };
+  const err = e => (e && e.error_data && (e.error_data.error_reason || e.error_data.error_msg || JSON.stringify(e.error_data))) || (e && e.message) || JSON.stringify(e);
+  vkBridge.send("VKWebAppInit").catch(() => {});
+
+  async function api(method, params, token) {
+    const r = await vkBridge.send("VKWebAppCallAPIMethod", { method, params: { ...params, v: V, access_token: token } });
+    return r.response;
+  }
+
+  document.getElementById("go").onclick = async (ev) => {
+    ev.target.disabled = true;
+    document.getElementById("log").innerHTML = "";
+    let token;
+    try {
+      const t = await vkBridge.send("VKWebAppGetAuthToken", { app_id: APP_ID, scope: "wall,photos,groups" });
+      token = t.access_token;
+      log("Выданные права: " + (t.scope || "(не указаны)"), t.scope && /photos/.test(t.scope) ? "ok" : "bad");
+    } catch (e) { log("Права не выданы: " + err(e), "bad"); ev.target.disabled = false; return; }
+
+    const checks = [
+      ["Фото на стену группы", "photos.getWallUploadServer", { group_id: GROUP_ID }],
+      ["Чтение стены группы", "wall.get", { owner_id: -GROUP_ID, count: 1 }],
+      ["Группы, где вы админ", "groups.get", { filter: "admin", count: 1 }],
+    ];
+    for (const [name, method, params] of checks) {
+      try { await api(method, params, token); log(name + ": работает", "ok"); }
+      catch (e) { log(name + ": ошибка — " + err(e), "bad"); }
+    }
+    ev.target.disabled = false;
+  };
+</script>
+</body>
+</html>
