@@ -21,9 +21,10 @@
 <body>
 <main>
   <h1>Проверка прав ВК для автопостинга</h1>
-  <p>Нажмите кнопку и подтвердите права в окне ВК. Страница проверит, можно ли загружать фото на стену группы. Ключ никуда не отправляется.</p>
+  <p>Нажмите кнопку и подтвердите права в окне ВК. Страница проверит, можно ли загружать фото на стену группы. Страница ключ никуда не отправляет.</p>
   <button id="go">Проверить права</button>
   <ul id="log"></ul>
+  <button id="copy" hidden>Скопировать ключ для сервера</button>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@vkontakte/vk-bridge@2.15.4/dist/browser.min.js"></script>
 <script>
@@ -57,6 +58,13 @@
       catch (e) { log(name + ": ошибка — " + err(e), "bad"); }
     }
     ev.target.disabled = false;
+    const copy = document.getElementById("copy");
+    copy.hidden = false;
+    copy.onclick = async () => {
+      try { await vkBridge.send("VKWebAppCopyText", { text: token }); }
+      catch (e) { try { await navigator.clipboard.writeText(token); } catch (e2) { log("Не удалось скопировать: " + err(e), "bad"); return; } }
+      log("Ключ скопирован. Вставьте его в окно скрипта на ноутбуке и больше никуда.", "ok");
+    };
   };
 </script>
 </body>
