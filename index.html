@@ -46,6 +46,7 @@
       const t = await vkBridge.send("VKWebAppGetAuthToken", { app_id: APP_ID, scope: "wall,photos,groups" });
       token = t.access_token;
       log("Выданные права: " + (t.scope || "(не указаны)"), t.scope && /photos/.test(t.scope) ? "ok" : "bad");
+      log("Срок действия: " + ("expires" in t ? t.expires : "expires_in" in t ? t.expires_in : "не указан") + " (" + Object.keys(t).join(", ") + ")");
     } catch (e) { log("Права не выданы: " + err(e), "bad"); ev.target.disabled = false; return; }
 
     const checks = [
